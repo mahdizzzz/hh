@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>برنامه حسابداری همکاران (نسخه محلی)</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Persian Datepicker library and its dependency (jQuery) -->
+    <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css"/>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
+    <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+
+    <style>
+        /* Custom styles for better Persian font rendering */
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .main-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .partner-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .partner-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .form-input, .form-select {
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            padding: 0.75rem 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        .btn {
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: bold;
+            transition: background-color 0.2s, opacity 0.2s;
+            cursor: pointer;
+        }
+        .btn-sm {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+        .btn-info {
+            background-color: #0ea5e9;
+            color: white;
+        }
+        .btn-info:hover {
+            background-color: #0284c7;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="app-container" class="main-container">
+        
+        <!-- Password Protection Screen -->
+        <div id="password-screen">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">ورود به برنامه</h1>
+            <form id="password-form" class="max-w-sm mx-auto">
+                <div>
+                    <label for="password-input" class="block mb-2 font-semibold text-gray-700">رمز عبور</label>
+                    <input type="password" id="password-input" class="form-input w-full text-center" required>
+                    <p id="password-error" class="text-red-500 text-sm mt-2"></p>
+                </div>
+                <button type="submit" class="btn btn-primary w-full mt-4">ورود</button>
+            </form>
+        </div>
+
+        <!-- Main Application (Initially Hidden) -->
+        <div id="main-app" class="hidden">
+            <!-- Main Page: Partner Selection -->
+            <div id="main-page">
+                <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">انتخاب همکار</h1>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div data-name="کاخ موبایل" data-key="kakh_mobile" class="partner-card bg-blue-500 text-white p-8 rounded-lg text-center cursor-pointer"><h2 class="text-2xl font-bold">کاخ موبایل</h2></div>
+                    <div data-name="بانک موبایل شهر" data-key="bank_mobile_shahr" class="partner-card bg-green-500 text-white p-8 rounded-lg text-center cursor-pointer"><h2 class="text-2xl font-bold">بانک موبایل شهر</h2></div>
+                    <div data-name="سینا موبایل" data-key="sina_mobile" class="partner-card bg-purple-500 text-white p-8 rounded-lg text-center cursor-pointer"><h2 class="text-2xl font-bold">سینا موبایل</h2></div>
+                </div>
+            </div>
+
+            <!-- Accounting Page: Unsettled View -->
+            <div id="accounting-page" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 id="partner-title" class="text-3xl font-bold text-gray-800"></h1>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="view-settled-button" class="btn btn-info">مشاهده تسویه شده‌ها</button>
+                        <button id="back-button" class="btn btn-secondary">بازگشت</button>
+                    </div>
+                </div>
+                
+                <form id="accounting-form" class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                    <div><label for="service-type" class="block mb-2 font-semibold text-gray-700">نوع کار</label><select id="service-type" class="form-select w-full"><option value="Wipe">Wipe</option><option value="FRP">FRP</option><option value="Wipe FRP">Wipe FRP</option><option value="Apple ID">Apple ID</option></select></div>
+                    <div><label for="partner-name" class="block mb-2 font-semibold text-gray-700">همکار</label><input type="text" id="partner-name" class="form-input w-full bg-gray-200" readonly></div>
+                    <div><label for="phone-model" class="block mb-2 font-semibold text-gray-700">مدل گوشی</label><input type="text" id="phone-model" class="form-input w-full" required></div>
+                    <div><label for="record-date" class="block mb-2 font-semibold text-gray-700">تاریخ</label><input type="text" id="record-date" class="form-input w-full" required></div>
+                    <div><label for="price" class="block mb-2 font-semibold text-gray-700">قیمت (تومان)</label><input type="number" id="price" class="form-input w-full" required></div>
+                    <div class="md:col-span-2 lg:col-span-1"><button type="submit" class="btn btn-primary w-full">ثبت رکورد</button></div>
+                </form>
+
+                <div id="total-sum-container" class="bg-red-100 border-l-4 border-red-500 text-red-800 p-4 rounded-lg mb-6" role="alert"><p class="font-bold text-lg">مجموع حساب تسویه نشده: <span id="total-sum">0</span> تومان</p></div>
+                
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">سوابق تسویه نشده</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+                        <thead class="bg-gray-800 text-white"><tr><th class="py-3 px-4 text-right">نوع کار</th><th class="py-3 px-4 text-right">مدل گوشی</th><th class="py-3 px-4 text-right">تاریخ</th><th class="py-3 px-4 text-right">قیمت (تومان)</th><th class="py-3 px-4 text-center">عملیات</th></tr></thead>
+                        <tbody id="records-table-body" class="text-gray-700"></tbody>
+                    </table>
+                </div>
+                <div class="mt-6 text-center"><button id="copy-button" class="btn bg-indigo-600 text-white hover:bg-indigo-700">کپی گزارش تسویه نشده</button></div>
+            </div>
+            
+            <!-- Settled Records Page -->
+            <div id="settled-page" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 id="settled-partner-title" class="text-3xl font-bold text-gray-800"></h1>
+                    <button id="back-to-unsettled-button" class="btn btn-secondary">بازگشت به حسابداری</button>
+                </div>
+                
+                <div id="settled-sum-container" class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg mb-6" role="alert"><p class="font-bold text-lg">مجموع حساب تسویه شده: <span id="settled-sum">0</span> تومان</p></div>
+
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">سوابق تسویه شده</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+                        <thead class="bg-gray-600 text-white"><tr><th class="py-3 px-4 text-right">نوع کار</th><th class="py-3 px-4 text-right">مدل گوشی</th><th class="py-3 px-4 text-right">تاریخ</th><th class="py-3 px-4 text-right">قیمت (تومان)</th><th class="py-3 px-4 text-center">عملیات</th></tr></thead>
+                        <tbody id="settled-records-table-body" class="text-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    $(document).ready(function() {
+        let currentPartnerKey = null;
+        let currentPartnerName = '';
+
+        const passwordScreen = $('#password-screen');
+        const passwordForm = $('#password-form');
+        const passwordInput = $('#password-input');
+        const passwordError = $('#password-error');
+        const mainApp = $('#main-app');
+
+        const mainPage = $('#main-page');
+        const accountingPage = $('#accounting-page');
+        const settledPage = $('#settled-page');
+
+        const partnerTitle = $('#partner-title');
+        const settledPartnerTitle = $('#settled-partner-title');
+        const form = $('#accounting-form');
+        const partnerNameInput = $('#partner-name');
+        const recordsTableBody = $('#records-table-body');
+        const settledRecordsTableBody = $('#settled-records-table-body');
+        const dateInput = $('#record-date');
+        const totalSumEl = $('#total-sum');
+        const settledSumEl = $('#settled-sum');
+        const copyButton = $('#copy-button');
+
+        // --- Password Protection Logic ---
+        passwordForm.on('submit', function(e) {
+            e.preventDefault();
+            const enteredPassword = passwordInput.val();
+            if (enteredPassword === '4006') {
+                passwordScreen.addClass('hidden');
+                mainApp.removeClass('hidden');
+                initializeUI();
+                setupEventListeners();
+            } else {
+                passwordError.text('رمز عبور اشتباه است.');
+                passwordInput.val('');
+            }
+        });
+
+        // --- UI Initialization ---
+        function initializeUI() {
+            dateInput.persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                initialValue: false,
+                observer: true,
+                initialValueType: 'persian'
+            });
+        }
+
+        // --- Page Navigation ---
+        function showAccountingPage(name, key) {
+            currentPartnerKey = key;
+            currentPartnerName = name;
+            mainPage.addClass('hidden');
+            accountingPage.removeClass('hidden');
+            settledPage.addClass('hidden');
+            partnerTitle.text(`حسابداری: ${name}`);
+            partnerNameInput.val(name);
+            dateInput.persianDatepicker('setDate', new persianDate());
+            renderAll();
+        }
+
+        function showMainPage() {
+            currentPartnerKey = null;
+            currentPartnerName = '';
+            mainPage.removeClass('hidden');
+            accountingPage.addClass('hidden');
+            settledPage.addClass('hidden');
+        }
+        
+        function showSettledPage() {
+            accountingPage.addClass('hidden');
+            settledPage.removeClass('hidden');
+            settledPartnerTitle.text(`تسویه شده‌های: ${currentPartnerName}`);
+            renderAll(); // Re-render to ensure data is fresh
+        }
+
+        // --- Data Handling (localStorage) ---
+        function getRecords() {
+            if (!currentPartnerKey) return [];
+            const recordsJSON = localStorage.getItem(currentPartnerKey);
+            return recordsJSON ? JSON.parse(recordsJSON) : [];
+        }
+
+        function saveRecords(records) {
+            if (!currentPartnerKey) return;
+            localStorage.setItem(currentPartnerKey, JSON.stringify(records));
+        }
+
+        function addRecord(record) {
+            const records = getRecords();
+            record.id = 'id_' + new Date().getTime();
+            records.push(record);
+            saveRecords(records);
+        }
+
+        window.deleteRecord = function(recordId) {
+            if (!confirm('آیا از حذف این رکورد مطمئن هستید؟')) return;
+            let records = getRecords();
+            const updatedRecords = records.filter(r => r.id !== recordId);
+            saveRecords(updatedRecords);
+            renderAll();
+        }
+        
+        window.settleRecord = function(recordId) {
+            let records = getRecords();
+            const recordIndex = records.findIndex(r => r.id === recordId);
+            if (recordIndex > -1) {
+                records[recordIndex].isSettled = true;
+                saveRecords(records);
+                renderAll();
+            }
+        }
+
+        window.unsettleRecord = function(recordId) {
+            let records = getRecords();
+            const recordIndex = records.findIndex(r => r.id === recordId);
+            if (recordIndex > -1) {
+                records[recordIndex].isSettled = false;
+                saveRecords(records);
+                renderAll();
+            }
+        }
+
+        // --- Rendering Logic ---
+        function renderAll() {
+            const allRecords = getRecords();
+            const unsettledRecords = allRecords.filter(r => !r.isSettled);
+            const settledRecords = allRecords.filter(r => r.isSettled);
+            renderUnsettledTable(unsettledRecords);
+            renderSettledTable(settledRecords);
+        }
+
+        function renderUnsettledTable(unsettled) {
+            recordsTableBody.empty();
+            const unsettledSum = unsettled.reduce((sum, record) => sum + Number(record.price || 0), 0);
+            totalSumEl.text(unsettledSum.toLocaleString('fa-IR'));
+            copyButton.prop('disabled', unsettled.length === 0);
+
+            if (unsettled.length === 0) {
+                recordsTableBody.append('<tr><td colspan="5" class="text-center p-6 text-gray-500">هیچ رکوردی برای تسویه وجود ندارد.</td></tr>');
+            } else {
+                 unsettled.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                 unsettled.forEach(record => {
+                    const formattedPrice = Number(record.price).toLocaleString('fa-IR');
+                    const row = `
+                        <tr class="border-b hover:bg-gray-100">
+                            <td class="py-3 px-4">${record.service}</td>
+                            <td class="py-3 px-4">${record.model}</td>
+                            <td class="py-3 px-4">${record.date}</td>
+                            <td class="py-3 px-4">${formattedPrice}</td>
+                            <td class="py-3 px-4 text-center space-x-2 space-x-reverse">
+                                <button onclick="window.settleRecord('${record.id}')" class="btn btn-sm bg-green-500 text-white hover:bg-green-600">تسویه شد</button>
+                                <button onclick="window.deleteRecord('${record.id}')" class="btn btn-sm bg-red-500 text-white hover:bg-red-600">حذف</button>
+                            </td>
+                        </tr>`;
+                    recordsTableBody.append(row);
+                });
+            }
+        }
+
+        function renderSettledTable(settled) {
+            settledRecordsTableBody.empty();
+            const settledSum = settled.reduce((sum, record) => sum + Number(record.price || 0), 0);
+            settledSumEl.text(settledSum.toLocaleString('fa-IR'));
+            
+            if (settled.length === 0) {
+                settledRecordsTableBody.append('<tr><td colspan="5" class="text-center p-6 text-gray-500">هیچ رکوردی تسویه نشده است.</td></tr>');
+            } else {
+                settled.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                settled.forEach(record => {
+                    const formattedPrice = Number(record.price).toLocaleString('fa-IR');
+                    const row = `
+                        <tr class="border-b hover:bg-gray-50 bg-green-50">
+                            <td class="py-3 px-4">${record.service}</td>
+                            <td class="py-3 px-4">${record.model}</td>
+                            <td class="py-3 px-4">${record.date}</td>
+                            <td class="py-3 px-4">${formattedPrice}</td>
+                            <td class="py-3 px-4 text-center space-x-2 space-x-reverse">
+                                <button onclick="window.unsettleRecord('${record.id}')" class="btn btn-sm bg-yellow-500 text-white hover:bg-yellow-600">لغو تسویه</button>
+                                <button onclick="window.deleteRecord('${record.id}')" class="btn btn-sm bg-red-500 text-white hover:bg-red-600">حذف</button>
+                            </td>
+                        </tr>`;
+                    settledRecordsTableBody.append(row);
+                });
+            }
+        }
+
+        // --- Event Handlers ---
+        function setupEventListeners() {
+            $('.partner-card').on('click', function() {
+                showAccountingPage($(this).data('name'), $(this).data('key'));
+            });
+
+            $('#back-button').on('click', showMainPage);
+            $('#view-settled-button').on('click', showSettledPage);
+            $('#back-to-unsettled-button').on('click', function() {
+                showAccountingPage(currentPartnerName, currentPartnerKey);
+            });
+
+            form.on('submit', function(e) {
+                e.preventDefault();
+                const newRecord = {
+                    service: $('#service-type').val(),
+                    model: $('#phone-model').val(),
+                    date: dateInput.val(),
+                    price: $('#price').val(),
+                    createdAt: new Date().toISOString(),
+                    isSettled: false
+                };
+                addRecord(newRecord);
+                renderAll();
+                this.reset();
+                dateInput.persianDatepicker('setDate', new persianDate());
+            });
+
+            copyButton.on('click', function() {
+                const partnerName = partnerNameInput.val();
+                let reportText = `گزارش حساب های تسویه نشده: ${partnerName}\n\n`;
+                let totalSum = 0;
+
+                getRecords().filter(r => !r.isSettled).forEach(record => {
+                    const formattedPrice = Number(record.price).toLocaleString('fa-IR');
+                    totalSum += Number(record.price);
+                    reportText += `- کار: ${record.service}, مدل: ${record.model}, تاریخ: ${record.date}, قیمت: ${formattedPrice} تومان\n`;
+                });
+                
+                if (totalSum === 0) {
+                    reportText += "هیچ حساب تسویه نشده ای وجود ندارد.";
+                }
+
+                reportText += `\n--------------------\n`;
+                reportText += `مجموع کل تسویه نشده: ${totalSum.toLocaleString('fa-IR')} تومان`;
+
+                const textArea = document.createElement("textarea");
+                textArea.value = reportText;
+                textArea.style.position = "fixed";
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    const originalText = copyButton.text();
+                    copyButton.text('کپی شد!').prop('disabled', true);
+                    setTimeout(() => {
+                        copyButton.text(originalText).prop('disabled', false);
+                    }, 2000);
+                } catch (err) {
+                    console.error('خطا در کپی کردن متن: ', err);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+    });
+    </script>
+</body>
+</html>
