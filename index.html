@@ -125,6 +125,7 @@
                 </div>
                 
                 <form id="accounting-form" class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                    <input type="hidden" id="edit-record-id">
                     <div>
                         <label for="service-type" class="block mb-2 font-semibold text-gray-700">نوع کار</label>
                         <select id="service-type" class="form-select w-full">
@@ -211,6 +212,7 @@
         const totalSumEl = $('#total-sum');
         const settledSumEl = $('#settled-sum');
         const copyButton = $('#copy-button');
+        const editRecordIdInput = $('#edit-record-id');
         
         const serviceTypeSelect = $('#service-type');
         const phoneModelContainer = $('#phone-model-container');
@@ -293,6 +295,15 @@
             saveRecords(records);
         }
 
+        function updateRecord(updatedRecord) {
+            let records = getRecords();
+            const recordIndex = records.findIndex(r => r.id === updatedRecord.id);
+            if (recordIndex > -1) {
+                records[recordIndex] = { ...records[recordIndex], ...updatedRecord };
+                saveRecords(records);
+            }
+        }
+
         window.deleteRecord = function(recordId) {
             if (!confirm('آیا از حذف این رکورد مطمئن هستید؟')) return;
             let records = getRecords();
@@ -318,6 +329,24 @@
                 records[recordIndex].isSettled = false;
                 saveRecords(records);
                 renderAll();
+            }
+        }
+
+        window.editRecord = function(recordId) {
+            const records = getRecords();
+            const recordToEdit = records.find(r => r.id === recordId);
+            if (recordToEdit) {
+                editRecordIdInput.val(recordToEdit.id);
+                serviceTypeSelect.val(recordToEdit.service).trigger('change');
+                phoneModelInput.val(recordToEdit.model);
+                specificationsInput.val(recordToEdit.specifications);
+                dataVolumeInput.val(recordToEdit.dataVolume);
+                // FIX: Use .valueOf() instead of .getTime() for persianDate object
+                dateInput.persianDatepicker('setDate', new persianDate(recordToEdit.date.split('/')).valueOf());
+                $('#price').val(recordToEdit.price);
+                
+                form.find('button[type="submit"]').text('بروزرسانی رکورد');
+                $('html, body').animate({ scrollTop: form.offset().top }, 500);
             }
         }
 
@@ -354,9 +383,11 @@
 
                 const actionButtons = isSettled ? `
                     <button onclick="window.unsettleRecord('${record.id}')" class="btn btn-sm bg-yellow-500 text-white hover:bg-yellow-600">لغو تسویه</button>
+                    <button onclick="window.editRecord('${record.id}')" class="btn btn-sm bg-gray-500 text-white hover:bg-gray-600">ویرایش</button>
                     <button onclick="window.deleteRecord('${record.id}')" class="btn btn-sm bg-red-500 text-white hover:bg-red-600">حذف</button>
                 ` : `
                     <button onclick="window.settleRecord('${record.id}')" class="btn btn-sm bg-green-500 text-white hover:bg-green-600">تسویه شد</button>
+                    <button onclick="window.editRecord('${record.id}')" class="btn btn-sm bg-gray-500 text-white hover:bg-gray-600">ویرایش</button>
                     <button onclick="window.deleteRecord('${record.id}')" class="btn btn-sm bg-red-500 text-white hover:bg-red-600">حذف</button>
                 `;
 
@@ -368,7 +399,7 @@
                         <td class="py-3 px-4">${detailDisplay}</td>
                         <td class="py-3 px-4">${record.date}</td>
                         <td class="py-3 px-4">${formattedPrice}</td>
-                        <td class="py-3 px-4 text-center space-x-2 space-x-reverse">${actionButtons}</td>
+                        <td class="py-3 px-4 text-center space-x-1 space-x-reverse">${actionButtons}</td>
                     </tr>`;
                 tableBody.append(row);
             });
@@ -401,7 +432,6 @@
 
             serviceTypeSelect.on('change', function() {
                 const selectedValue = $(this).val();
-                // Hide all conditional fields first
                 dataVolumeContainer.addClass('hidden');
                 specificationsContainer.addClass('hidden');
                 phoneModelContainer.addClass('hidden');
@@ -414,28 +444,35 @@
                         dataVolumeContainer.removeClass('hidden');
                     }
                 }
-            }).trigger('change'); // Trigger on load to set initial state
+            }).trigger('change');
 
             form.on('submit', function(e) {
                 e.preventDefault();
+                const editId = editRecordIdInput.val();
                 const serviceType = serviceTypeSelect.val();
                 
-                const newRecord = {
+                const recordData = {
                     service: serviceType,
                     model: serviceType !== 'Apple ID' ? phoneModelInput.val() : null,
                     specifications: serviceType === 'Apple ID' ? specificationsInput.val() : null,
                     dataVolume: dataVolumeInput.val() || null,
                     date: dateInput.val(),
                     price: $('#price').val(),
-                    createdAt: new Date().toISOString(),
-                    isSettled: false
                 };
+
+                if (editId) {
+                    recordData.id = editId;
+                    updateRecord(recordData);
+                } else {
+                    recordData.createdAt = new Date().toISOString();
+                    recordData.isSettled = false;
+                    addRecord(recordData);
+                }
                 
-                addRecord(newRecord);
                 renderAll();
                 this.reset();
-                
-                // Manually reset conditional fields and date after form reset
+                editRecordIdInput.val('');
+                form.find('button[type="submit"]').text('ثبت رکورد');
                 serviceTypeSelect.trigger('change');
                 dateInput.persianDatepicker('setDate', new persianDate());
             });
