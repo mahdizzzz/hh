@@ -125,12 +125,26 @@
                 </div>
                 
                 <form id="accounting-form" class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
-                    <div><label for="service-type" class="block mb-2 font-semibold text-gray-700">نوع کار</label><select id="service-type" class="form-select w-full"><option value="Wipe">Wipe</option><option value="FRP">FRP</option><option value="Wipe FRP">Wipe FRP</option><option value="Apple ID">Apple ID</option></select></div>
+                    <div>
+                        <label for="service-type" class="block mb-2 font-semibold text-gray-700">نوع کار</label>
+                        <select id="service-type" class="form-select w-full">
+                            <option value="Wipe">Wipe</option>
+                            <option value="FRP">FRP</option>
+                            <option value="Wipe FRP">Wipe FRP</option>
+                            <option value="Apple ID">Apple ID</option>
+                            <option value="بکاپ wipe">بکاپ wipe</option>
+                            <option value="انتقال اطلاعات">انتقال اطلاعات</option>
+                        </select>
+                    </div>
+                    <div id="data-volume-container" class="hidden">
+                        <label for="data-volume" class="block mb-2 font-semibold text-gray-700">مقدار حجم (GB)</label>
+                        <input type="number" id="data-volume" class="form-input w-full" placeholder="مثلا: 64">
+                    </div>
                     <div><label for="partner-name" class="block mb-2 font-semibold text-gray-700">همکار</label><input type="text" id="partner-name" class="form-input w-full bg-gray-200" readonly></div>
                     <div><label for="phone-model" class="block mb-2 font-semibold text-gray-700">مدل گوشی</label><input type="text" id="phone-model" class="form-input w-full" required></div>
                     <div><label for="record-date" class="block mb-2 font-semibold text-gray-700">تاریخ</label><input type="text" id="record-date" class="form-input w-full" required></div>
                     <div><label for="price" class="block mb-2 font-semibold text-gray-700">قیمت (تومان)</label><input type="number" id="price" class="form-input w-full" required></div>
-                    <div class="md:col-span-2 lg:col-span-1"><button type="submit" class="btn btn-primary w-full">ثبت رکورد</button></div>
+                    <div class="lg:col-span-1"><button type="submit" class="btn btn-primary w-full">ثبت رکورد</button></div>
                 </form>
 
                 <div id="total-sum-container" class="bg-red-100 border-l-4 border-red-500 text-red-800 p-4 rounded-lg mb-6" role="alert"><p class="font-bold text-lg">مجموع حساب تسویه نشده: <span id="total-sum">0</span> تومان</p></div>
@@ -190,6 +204,9 @@
         const totalSumEl = $('#total-sum');
         const settledSumEl = $('#settled-sum');
         const copyButton = $('#copy-button');
+        const serviceTypeSelect = $('#service-type');
+        const dataVolumeContainer = $('#data-volume-container');
+        const dataVolumeInput = $('#data-volume');
 
         // --- Password Protection Logic ---
         passwordForm.on('submit', function(e) {
@@ -313,10 +330,14 @@
                  unsettled.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                  unsettled.forEach(record => {
                     const formattedPrice = Number(record.price).toLocaleString('fa-IR');
+                    let modelDisplay = record.model;
+                    if (record.dataVolume) {
+                        modelDisplay += ` <span class="text-xs text-gray-500">(${record.dataVolume} GB)</span>`;
+                    }
                     const row = `
                         <tr class="border-b hover:bg-gray-100">
                             <td class="py-3 px-4">${record.service}</td>
-                            <td class="py-3 px-4">${record.model}</td>
+                            <td class="py-3 px-4">${modelDisplay}</td>
                             <td class="py-3 px-4">${record.date}</td>
                             <td class="py-3 px-4">${formattedPrice}</td>
                             <td class="py-3 px-4 text-center space-x-2 space-x-reverse">
@@ -340,10 +361,14 @@
                 settled.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                 settled.forEach(record => {
                     const formattedPrice = Number(record.price).toLocaleString('fa-IR');
+                    let modelDisplay = record.model;
+                    if (record.dataVolume) {
+                        modelDisplay += ` <span class="text-xs text-gray-500">(${record.dataVolume} GB)</span>`;
+                    }
                     const row = `
                         <tr class="border-b hover:bg-gray-50 bg-green-50">
                             <td class="py-3 px-4">${record.service}</td>
-                            <td class="py-3 px-4">${record.model}</td>
+                            <td class="py-3 px-4">${modelDisplay}</td>
                             <td class="py-3 px-4">${record.date}</td>
                             <td class="py-3 px-4">${formattedPrice}</td>
                             <td class="py-3 px-4 text-center space-x-2 space-x-reverse">
@@ -368,19 +393,32 @@
                 showAccountingPage(currentPartnerName, currentPartnerKey);
             });
 
+            serviceTypeSelect.on('change', function() {
+                const selectedValue = $(this).val();
+                if (selectedValue === 'بکاپ wipe' || selectedValue === 'انتقال اطلاعات') {
+                    dataVolumeContainer.removeClass('hidden');
+                } else {
+                    dataVolumeContainer.addClass('hidden');
+                    dataVolumeInput.val('');
+                }
+            });
+
             form.on('submit', function(e) {
                 e.preventDefault();
                 const newRecord = {
-                    service: $('#service-type').val(),
+                    service: serviceTypeSelect.val(),
                     model: $('#phone-model').val(),
                     date: dateInput.val(),
                     price: $('#price').val(),
                     createdAt: new Date().toISOString(),
-                    isSettled: false
+                    isSettled: false,
+                    dataVolume: dataVolumeInput.val() || null
                 };
                 addRecord(newRecord);
                 renderAll();
                 this.reset();
+                // Manually hide volume container and set date after reset
+                dataVolumeContainer.addClass('hidden');
                 dateInput.persianDatepicker('setDate', new persianDate());
             });
 
@@ -392,7 +430,12 @@
                 getRecords().filter(r => !r.isSettled).forEach(record => {
                     const formattedPrice = Number(record.price).toLocaleString('fa-IR');
                     totalSum += Number(record.price);
-                    reportText += `- کار: ${record.service}, مدل: ${record.model}, تاریخ: ${record.date}, قیمت: ${formattedPrice} تومان\n`;
+                    let recordLine = `- کار: ${record.service}, مدل: ${record.model}`;
+                    if (record.dataVolume) {
+                        recordLine += ` (حجم: ${record.dataVolume} GB)`;
+                    }
+                    recordLine += `, تاریخ: ${record.date}, قیمت: ${formattedPrice} تومان\n`;
+                    reportText += recordLine;
                 });
                 
                 if (totalSum === 0) {
