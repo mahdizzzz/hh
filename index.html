@@ -136,12 +136,19 @@
                             <option value="انتقال اطلاعات">انتقال اطلاعات</option>
                         </select>
                     </div>
+                    <div id="phone-model-container">
+                        <label for="phone-model" class="block mb-2 font-semibold text-gray-700">مدل گوشی</label>
+                        <input type="text" id="phone-model" class="form-input w-full">
+                    </div>
+                    <div id="specifications-container" class="hidden">
+                        <label for="specifications" class="block mb-2 font-semibold text-gray-700">مشخصات</label>
+                        <input type="text" id="specifications" class="form-input w-full" placeholder="مثلا: ایمیل یا شماره تماس">
+                    </div>
                     <div id="data-volume-container" class="hidden">
                         <label for="data-volume" class="block mb-2 font-semibold text-gray-700">مقدار حجم (GB)</label>
                         <input type="number" id="data-volume" class="form-input w-full" placeholder="مثلا: 64">
                     </div>
                     <div><label for="partner-name" class="block mb-2 font-semibold text-gray-700">همکار</label><input type="text" id="partner-name" class="form-input w-full bg-gray-200" readonly></div>
-                    <div><label for="phone-model" class="block mb-2 font-semibold text-gray-700">مدل گوشی</label><input type="text" id="phone-model" class="form-input w-full" required></div>
                     <div><label for="record-date" class="block mb-2 font-semibold text-gray-700">تاریخ</label><input type="text" id="record-date" class="form-input w-full" required></div>
                     <div><label for="price" class="block mb-2 font-semibold text-gray-700">قیمت (تومان)</label><input type="number" id="price" class="form-input w-full" required></div>
                     <div class="lg:col-span-1"><button type="submit" class="btn btn-primary w-full">ثبت رکورد</button></div>
@@ -152,7 +159,7 @@
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">سوابق تسویه نشده</h2>
                 <div class="overflow-x-auto">
                     <table class="min-w-full bg-white rounded-lg shadow overflow-hidden">
-                        <thead class="bg-gray-800 text-white"><tr><th class="py-3 px-4 text-right">نوع کار</th><th class="py-3 px-4 text-right">مدل گوشی</th><th class="py-3 px-4 text-right">تاریخ</th><th class="py-3 px-4 text-right">قیمت (تومان)</th><th class="py-3 px-4 text-center">عملیات</th></tr></thead>
+                        <thead class="bg-gray-800 text-white"><tr><th class="py-3 px-4 text-right">نوع کار</th><th class="py-3 px-4 text-right">مدل / مشخصات</th><th class="py-3 px-4 text-right">تاریخ</th><th class="py-3 px-4 text-right">قیمت (تومان)</th><th class="py-3 px-4 text-center">عملیات</th></tr></thead>
                         <tbody id="records-table-body" class="text-gray-700"></tbody>
                     </table>
                 </div>
@@ -171,7 +178,7 @@
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">سوابق تسویه شده</h2>
                 <div class="overflow-x-auto">
                     <table class="min-w-full bg-white rounded-lg shadow overflow-hidden">
-                        <thead class="bg-gray-600 text-white"><tr><th class="py-3 px-4 text-right">نوع کار</th><th class="py-3 px-4 text-right">مدل گوشی</th><th class="py-3 px-4 text-right">تاریخ</th><th class="py-3 px-4 text-right">قیمت (تومان)</th><th class="py-3 px-4 text-center">عملیات</th></tr></thead>
+                        <thead class="bg-gray-600 text-white"><tr><th class="py-3 px-4 text-right">نوع کار</th><th class="py-3 px-4 text-right">مدل / مشخصات</th><th class="py-3 px-4 text-right">تاریخ</th><th class="py-3 px-4 text-right">قیمت (تومان)</th><th class="py-3 px-4 text-center">عملیات</th></tr></thead>
                         <tbody id="settled-records-table-body" class="text-gray-700"></tbody>
                     </table>
                 </div>
@@ -204,7 +211,12 @@
         const totalSumEl = $('#total-sum');
         const settledSumEl = $('#settled-sum');
         const copyButton = $('#copy-button');
+        
         const serviceTypeSelect = $('#service-type');
+        const phoneModelContainer = $('#phone-model-container');
+        const phoneModelInput = $('#phone-model');
+        const specificationsContainer = $('#specifications-container');
+        const specificationsInput = $('#specifications');
         const dataVolumeContainer = $('#data-volume-container');
         const dataVolumeInput = $('#data-volume');
 
@@ -259,7 +271,7 @@
             accountingPage.addClass('hidden');
             settledPage.removeClass('hidden');
             settledPartnerTitle.text(`تسویه شده‌های: ${currentPartnerName}`);
-            renderAll(); // Re-render to ensure data is fresh
+            renderAll();
         }
 
         // --- Data Handling (localStorage) ---
@@ -318,67 +330,61 @@
             renderSettledTable(settledRecords);
         }
 
+        function renderTableRows(records, tableBody, isSettled) {
+            tableBody.empty();
+            
+            const emptyMessage = isSettled ? 'هیچ رکوردی تسویه نشده است.' : 'هیچ رکوردی برای تسویه وجود ندارد.';
+            if (records.length === 0) {
+                tableBody.append(`<tr><td colspan="5" class="text-center p-6 text-gray-500">${emptyMessage}</td></tr>`);
+                return;
+            }
+
+            records.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            records.forEach(record => {
+                const formattedPrice = Number(record.price).toLocaleString('fa-IR');
+                let detailDisplay = '';
+                if (record.service === 'Apple ID') {
+                    detailDisplay = record.specifications || '-';
+                } else {
+                    detailDisplay = record.model || '-';
+                    if (record.dataVolume) {
+                        detailDisplay += ` <span class="text-xs text-gray-500">(${record.dataVolume} GB)</span>`;
+                    }
+                }
+
+                const actionButtons = isSettled ? `
+                    <button onclick="window.unsettleRecord('${record.id}')" class="btn btn-sm bg-yellow-500 text-white hover:bg-yellow-600">لغو تسویه</button>
+                    <button onclick="window.deleteRecord('${record.id}')" class="btn btn-sm bg-red-500 text-white hover:bg-red-600">حذف</button>
+                ` : `
+                    <button onclick="window.settleRecord('${record.id}')" class="btn btn-sm bg-green-500 text-white hover:bg-green-600">تسویه شد</button>
+                    <button onclick="window.deleteRecord('${record.id}')" class="btn btn-sm bg-red-500 text-white hover:bg-red-600">حذف</button>
+                `;
+
+                const rowClass = isSettled ? 'border-b hover:bg-gray-50 bg-green-50' : 'border-b hover:bg-gray-100';
+
+                const row = `
+                    <tr class="${rowClass}">
+                        <td class="py-3 px-4">${record.service}</td>
+                        <td class="py-3 px-4">${detailDisplay}</td>
+                        <td class="py-3 px-4">${record.date}</td>
+                        <td class="py-3 px-4">${formattedPrice}</td>
+                        <td class="py-3 px-4 text-center space-x-2 space-x-reverse">${actionButtons}</td>
+                    </tr>`;
+                tableBody.append(row);
+            });
+        }
+
         function renderUnsettledTable(unsettled) {
-            recordsTableBody.empty();
             const unsettledSum = unsettled.reduce((sum, record) => sum + Number(record.price || 0), 0);
             totalSumEl.text(unsettledSum.toLocaleString('fa-IR'));
             copyButton.prop('disabled', unsettled.length === 0);
-
-            if (unsettled.length === 0) {
-                recordsTableBody.append('<tr><td colspan="5" class="text-center p-6 text-gray-500">هیچ رکوردی برای تسویه وجود ندارد.</td></tr>');
-            } else {
-                 unsettled.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                 unsettled.forEach(record => {
-                    const formattedPrice = Number(record.price).toLocaleString('fa-IR');
-                    let modelDisplay = record.model;
-                    if (record.dataVolume) {
-                        modelDisplay += ` <span class="text-xs text-gray-500">(${record.dataVolume} GB)</span>`;
-                    }
-                    const row = `
-                        <tr class="border-b hover:bg-gray-100">
-                            <td class="py-3 px-4">${record.service}</td>
-                            <td class="py-3 px-4">${modelDisplay}</td>
-                            <td class="py-3 px-4">${record.date}</td>
-                            <td class="py-3 px-4">${formattedPrice}</td>
-                            <td class="py-3 px-4 text-center space-x-2 space-x-reverse">
-                                <button onclick="window.settleRecord('${record.id}')" class="btn btn-sm bg-green-500 text-white hover:bg-green-600">تسویه شد</button>
-                                <button onclick="window.deleteRecord('${record.id}')" class="btn btn-sm bg-red-500 text-white hover:bg-red-600">حذف</button>
-                            </td>
-                        </tr>`;
-                    recordsTableBody.append(row);
-                });
-            }
+            renderTableRows(unsettled, recordsTableBody, false);
         }
 
         function renderSettledTable(settled) {
-            settledRecordsTableBody.empty();
             const settledSum = settled.reduce((sum, record) => sum + Number(record.price || 0), 0);
             settledSumEl.text(settledSum.toLocaleString('fa-IR'));
-            
-            if (settled.length === 0) {
-                settledRecordsTableBody.append('<tr><td colspan="5" class="text-center p-6 text-gray-500">هیچ رکوردی تسویه نشده است.</td></tr>');
-            } else {
-                settled.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                settled.forEach(record => {
-                    const formattedPrice = Number(record.price).toLocaleString('fa-IR');
-                    let modelDisplay = record.model;
-                    if (record.dataVolume) {
-                        modelDisplay += ` <span class="text-xs text-gray-500">(${record.dataVolume} GB)</span>`;
-                    }
-                    const row = `
-                        <tr class="border-b hover:bg-gray-50 bg-green-50">
-                            <td class="py-3 px-4">${record.service}</td>
-                            <td class="py-3 px-4">${modelDisplay}</td>
-                            <td class="py-3 px-4">${record.date}</td>
-                            <td class="py-3 px-4">${formattedPrice}</td>
-                            <td class="py-3 px-4 text-center space-x-2 space-x-reverse">
-                                <button onclick="window.unsettleRecord('${record.id}')" class="btn btn-sm bg-yellow-500 text-white hover:bg-yellow-600">لغو تسویه</button>
-                                <button onclick="window.deleteRecord('${record.id}')" class="btn btn-sm bg-red-500 text-white hover:bg-red-600">حذف</button>
-                            </td>
-                        </tr>`;
-                    settledRecordsTableBody.append(row);
-                });
-            }
+            renderTableRows(settled, settledRecordsTableBody, true);
         }
 
         // --- Event Handlers ---
@@ -395,30 +401,42 @@
 
             serviceTypeSelect.on('change', function() {
                 const selectedValue = $(this).val();
-                if (selectedValue === 'بکاپ wipe' || selectedValue === 'انتقال اطلاعات') {
-                    dataVolumeContainer.removeClass('hidden');
+                // Hide all conditional fields first
+                dataVolumeContainer.addClass('hidden');
+                specificationsContainer.addClass('hidden');
+                phoneModelContainer.addClass('hidden');
+
+                if (selectedValue === 'Apple ID') {
+                    specificationsContainer.removeClass('hidden');
                 } else {
-                    dataVolumeContainer.addClass('hidden');
-                    dataVolumeInput.val('');
+                    phoneModelContainer.removeClass('hidden');
+                    if (selectedValue === 'بکاپ wipe' || selectedValue === 'انتقال اطلاعات') {
+                        dataVolumeContainer.removeClass('hidden');
+                    }
                 }
-            });
+            }).trigger('change'); // Trigger on load to set initial state
 
             form.on('submit', function(e) {
                 e.preventDefault();
+                const serviceType = serviceTypeSelect.val();
+                
                 const newRecord = {
-                    service: serviceTypeSelect.val(),
-                    model: $('#phone-model').val(),
+                    service: serviceType,
+                    model: serviceType !== 'Apple ID' ? phoneModelInput.val() : null,
+                    specifications: serviceType === 'Apple ID' ? specificationsInput.val() : null,
+                    dataVolume: dataVolumeInput.val() || null,
                     date: dateInput.val(),
                     price: $('#price').val(),
                     createdAt: new Date().toISOString(),
-                    isSettled: false,
-                    dataVolume: dataVolumeInput.val() || null
+                    isSettled: false
                 };
+                
                 addRecord(newRecord);
                 renderAll();
                 this.reset();
-                // Manually hide volume container and set date after reset
-                dataVolumeContainer.addClass('hidden');
+                
+                // Manually reset conditional fields and date after form reset
+                serviceTypeSelect.trigger('change');
                 dateInput.persianDatepicker('setDate', new persianDate());
             });
 
@@ -430,11 +448,18 @@
                 getRecords().filter(r => !r.isSettled).forEach(record => {
                     const formattedPrice = Number(record.price).toLocaleString('fa-IR');
                     totalSum += Number(record.price);
-                    let recordLine = `- کار: ${record.service}, مدل: ${record.model}`;
-                    if (record.dataVolume) {
-                        recordLine += ` (حجم: ${record.dataVolume} GB)`;
+                    let recordLine = `- کار: ${record.service}, `;
+                    
+                    if (record.service === 'Apple ID') {
+                        recordLine += `مشخصات: ${record.specifications || '-'}, `;
+                    } else {
+                        recordLine += `مدل: ${record.model || '-'}, `;
+                        if (record.dataVolume) {
+                            recordLine += `(حجم: ${record.dataVolume} GB), `;
+                        }
                     }
-                    recordLine += `, تاریخ: ${record.date}, قیمت: ${formattedPrice} تومان\n`;
+
+                    recordLine += `تاریخ: ${record.date}, قیمت: ${formattedPrice} تومان\n`;
                     reportText += recordLine;
                 });
                 
