@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>برنامه حسابداری آنلاین همکاران</title>
+    <title>برنامه حسابداری همکاران (نسخه محلی)</title>
     
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -83,19 +83,6 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 2rem auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -113,12 +100,6 @@
                 </div>
                 <button type="submit" class="btn btn-primary w-full mt-4">ورود</button>
             </form>
-        </div>
-
-        <!-- Firebase Loading Screen -->
-        <div id="loading-spinner" class="hidden text-center py-10">
-            <div class="loader"></div>
-            <p class="text-gray-600">در حال اتصال به سرور...</p>
         </div>
 
         <!-- Main Application (Initially Hidden) -->
@@ -206,35 +187,21 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-  apiKey: "AIzaSyCuw580Os9l88v7wdhWsGOh06HvJYG5uMM",
-  authDomain: "hesabdari-fc5a1.firebaseapp.com",
-  projectId: "hesabdari-fc5a1",
-  storageBucket: "hesabdari-fc5a1.firebasestorage.app",
-  messagingSenderId: "776022275515",
-  appId: "1:776022275515:web:e8bf4b8d2d88844ec2009e",
-  measurementId: "G-GX94D629CC"
-};
-        let db, auth, userId;
+    <script>
+    $(document).ready(function() {
         let currentPartnerKey = null;
         let currentPartnerName = '';
-        let unsubscribe;
 
         const passwordScreen = $('#password-screen');
         const passwordForm = $('#password-form');
         const passwordInput = $('#password-input');
         const passwordError = $('#password-error');
-        const loadingSpinner = $('#loading-spinner');
         const mainApp = $('#main-app');
+
         const mainPage = $('#main-page');
         const accountingPage = $('#accounting-page');
         const settledPage = $('#settled-page');
+
         const partnerTitle = $('#partner-title');
         const settledPartnerTitle = $('#settled-partner-title');
         const form = $('#accounting-form');
@@ -246,6 +213,7 @@
         const settledSumEl = $('#settled-sum');
         const copyButton = $('#copy-button');
         const editRecordIdInput = $('#edit-record-id');
+        
         const serviceTypeSelect = $('#service-type');
         const phoneModelContainer = $('#phone-model-container');
         const phoneModelInput = $('#phone-model');
@@ -254,52 +222,22 @@
         const dataVolumeContainer = $('#data-volume-container');
         const dataVolumeInput = $('#data-volume');
 
+        // --- Password Protection Logic ---
         passwordForm.on('submit', function(e) {
             e.preventDefault();
             const enteredPassword = passwordInput.val();
             if (enteredPassword === '4006') {
                 passwordScreen.addClass('hidden');
-                loadingSpinner.removeClass('hidden');
-                initializeFirebase();
+                mainApp.removeClass('hidden');
+                initializeUI();
+                setupEventListeners();
             } else {
                 passwordError.text('رمز عبور اشتباه است.');
                 passwordInput.val('');
             }
         });
 
-        function initializeFirebase() {
-            try {
-                if (!firebaseConfig.apiKey) {
-                    loadingSpinner.html('<p class="text-red-500">خطا: کلید اتصال Firebase تنظیم نشده است. لطفاً کد را ویرایش کنید.</p>');
-                    return;
-                }
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        if (!userId) {
-                            userId = user.uid;
-                            console.log("Authentication successful. User ID:", userId);
-                            initializeUI();
-                            setupEventListeners();
-                            loadingSpinner.addClass('hidden');
-                            mainApp.removeClass('hidden');
-                        }
-                    } else {
-                        signInAnonymously(auth).catch(error => {
-                            console.error("Anonymous sign-in failed:", error);
-                            loadingSpinner.html('<p class="text-red-500">خطا در ورود به سیستم. لطفاً صفحه را رفرش کنید.</p>');
-                        });
-                    }
-                });
-            } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                loadingSpinner.html('<p class="text-red-500">خطا در اتصال به سرور. لطفاً از اتصال اینترنت خود اطمینان حاصل کرده و صفحه را رفرش کنید.</p>');
-            }
-        }
-
+        // --- UI Initialization ---
         function initializeUI() {
             dateInput.persianDatepicker({
                 format: 'YYYY/MM/DD',
@@ -310,6 +248,7 @@
             });
         }
 
+        // --- Page Navigation ---
         function showAccountingPage(name, key) {
             currentPartnerKey = key;
             currentPartnerName = name;
@@ -319,11 +258,10 @@
             partnerTitle.text(`حسابداری: ${name}`);
             partnerNameInput.val(name);
             dateInput.persianDatepicker('setDate', new persianDate());
-            listenForRecords();
+            renderAll();
         }
 
         function showMainPage() {
-            if (unsubscribe) unsubscribe();
             currentPartnerKey = null;
             currentPartnerName = '';
             mainPage.removeClass('hidden');
@@ -335,33 +273,92 @@
             accountingPage.addClass('hidden');
             settledPage.removeClass('hidden');
             settledPartnerTitle.text(`تسویه شده‌های: ${currentPartnerName}`);
+            renderAll();
         }
 
-        function listenForRecords() {
-            if (!userId || !currentPartnerKey) return;
-            if (unsubscribe) unsubscribe();
+        // --- Data Handling (localStorage) ---
+        function getRecords() {
+            if (!currentPartnerKey) return [];
+            const recordsJSON = localStorage.getItem(currentPartnerKey);
+            return recordsJSON ? JSON.parse(recordsJSON) : [];
+        }
 
-            const recordsCollection = collection(db, 'users', userId, currentPartnerKey);
-            const q = query(recordsCollection);
+        function saveRecords(records) {
+            if (!currentPartnerKey) return;
+            localStorage.setItem(currentPartnerKey, JSON.stringify(records));
+        }
 
-            unsubscribe = onSnapshot(q, (querySnapshot) => {
-                const unsettledRecords = [];
-                const settledRecords = [];
-                querySnapshot.forEach((doc) => {
-                    const record = { id: doc.id, ...doc.data() };
-                    if (record.isSettled) {
-                        settledRecords.push(record);
-                    } else {
-                        unsettledRecords.push(record);
-                    }
-                });
-                renderUnsettledTable(unsettledRecords);
-                renderSettledTable(settledRecords);
-            }, (error) => {
-                console.error("Error listening to records:", error);
-            });
+        function addRecord(record) {
+            const records = getRecords();
+            record.id = 'id_' + new Date().getTime();
+            records.push(record);
+            saveRecords(records);
+        }
+
+        function updateRecord(updatedRecord) {
+            let records = getRecords();
+            const recordIndex = records.findIndex(r => r.id === updatedRecord.id);
+            if (recordIndex > -1) {
+                records[recordIndex] = { ...records[recordIndex], ...updatedRecord };
+                saveRecords(records);
+            }
+        }
+
+        window.deleteRecord = function(recordId) {
+            if (!confirm('آیا از حذف این رکورد مطمئن هستید؟')) return;
+            let records = getRecords();
+            const updatedRecords = records.filter(r => r.id !== recordId);
+            saveRecords(updatedRecords);
+            renderAll();
         }
         
+        window.settleRecord = function(recordId) {
+            let records = getRecords();
+            const recordIndex = records.findIndex(r => r.id === recordId);
+            if (recordIndex > -1) {
+                records[recordIndex].isSettled = true;
+                saveRecords(records);
+                renderAll();
+            }
+        }
+
+        window.unsettleRecord = function(recordId) {
+            let records = getRecords();
+            const recordIndex = records.findIndex(r => r.id === recordId);
+            if (recordIndex > -1) {
+                records[recordIndex].isSettled = false;
+                saveRecords(records);
+                renderAll();
+            }
+        }
+
+        window.editRecord = function(recordId) {
+            const records = getRecords();
+            const recordToEdit = records.find(r => r.id === recordId);
+            if (recordToEdit) {
+                editRecordIdInput.val(recordToEdit.id);
+                serviceTypeSelect.val(recordToEdit.service).trigger('change');
+                phoneModelInput.val(recordToEdit.model);
+                specificationsInput.val(recordToEdit.specifications);
+                dataVolumeInput.val(recordToEdit.dataVolume);
+                // FIX: Use .valueOf() instead of .getTime() for persianDate object
+                dateInput.persianDatepicker('setDate', new persianDate(recordToEdit.date.split('/')).valueOf());
+                $('#price').val(recordToEdit.price);
+                
+                form.find('button[type="submit"]').text('بروزرسانی رکورد');
+                $('html, body').animate({ scrollTop: form.offset().top }, 500);
+            }
+        }
+
+        // --- Rendering Logic ---
+        function renderAll() {
+            const allRecords = getRecords();
+            const unsettledRecords = allRecords.filter(r => !r.isSettled);
+            const settledRecords = allRecords.filter(r => r.isSettled);
+            renderUnsettledTable(unsettledRecords);
+            renderSettledTable(settledRecords);
+        }
+
         function renderTableRows(records, tableBody, isSettled) {
             tableBody.empty();
             
@@ -371,7 +368,7 @@
                 return;
             }
 
-            records.sort((a, b) => (b.createdAt?.toDate()?.getTime() || 0) - (a.createdAt?.toDate()?.getTime() || 0));
+            records.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             records.forEach(record => {
                 const formattedPrice = Number(record.price).toLocaleString('fa-IR');
                 let detailDisplay = '';
@@ -421,79 +418,7 @@
             renderTableRows(settled, settledRecordsTableBody, true);
         }
 
-        async function addRecord(record) {
-            if (!userId || !currentPartnerKey) return;
-            try {
-                const recordsCollection = collection(db, 'users', userId, currentPartnerKey);
-                await addDoc(recordsCollection, record);
-            } catch (e) {
-                console.error("Error adding document: ", e);
-            }
-        }
-
-        async function updateRecord(recordId, updatedData) {
-            if (!userId || !currentPartnerKey) return;
-            try {
-                const recordDoc = doc(db, 'users', userId, currentPartnerKey, recordId);
-                await updateDoc(recordDoc, updatedData);
-            } catch (e) {
-                console.error("Error updating document: ", e);
-            }
-        }
-
-        window.deleteRecord = async function(docId) {
-            if (!confirm('آیا از حذف این رکورد مطمئن هستید؟')) return;
-            if (!userId || !currentPartnerKey || !docId) return;
-            try {
-                const recordDoc = doc(db, 'users', userId, currentPartnerKey, docId);
-                await deleteDoc(recordDoc);
-            } catch (e) {
-                console.error("Error deleting document: ", e);
-            }
-        }
-        
-        window.settleRecord = async function(docId) {
-            if (!userId || !currentPartnerKey || !docId) return;
-            try {
-                const recordDoc = doc(db, 'users', userId, currentPartnerKey, docId);
-                await updateDoc(recordDoc, { isSettled: true });
-            } catch (e) {
-                console.error("Error settling document: ", e);
-            }
-        }
-
-        window.unsettleRecord = async function(docId) {
-            if (!userId || !currentPartnerKey || !docId) return;
-            try {
-                const recordDoc = doc(db, 'users', userId, currentPartnerKey, docId);
-                await updateDoc(recordDoc, { isSettled: false });
-            } catch (e) {
-                console.error("Error unsettling document: ", e);
-            }
-        }
-
-        window.editRecord = async function(docId) {
-            const recordsCollection = collection(db, 'users', userId, currentPartnerKey);
-            const q = query(recordsCollection);
-            const unsubscribeEdit = onSnapshot(q, (querySnapshot) => {
-                 querySnapshot.forEach((doc) => {
-                    if (doc.id === docId) {
-                        const recordToEdit = {id: doc.id, ...doc.data()};
-                        editRecordIdInput.val(recordToEdit.id);
-                        serviceTypeSelect.val(recordToEdit.service).trigger('change');
-                        phoneModelInput.val(recordToEdit.model);
-                        specificationsInput.val(recordToEdit.specifications);
-                        dataVolumeInput.val(recordToEdit.dataVolume);
-                        dateInput.persianDatepicker('setDate', new persianDate(recordToEdit.date.split('/')).valueOf());
-                        $('#price').val(recordToEdit.price);
-                        form.find('button[type="submit"]').text('بروزرسانی رکورد');
-                        $('html, body').animate({ scrollTop: form.offset().top }, 500);
-                        unsubscribeEdit(); // Stop listening after finding the record
-                    }
-                });
-            });
-        }
-
+        // --- Event Handlers ---
         function setupEventListeners() {
             $('.partner-card').on('click', function() {
                 showAccountingPage($(this).data('name'), $(this).data('key'));
@@ -521,7 +446,7 @@
                 }
             }).trigger('change');
 
-            form.on('submit', async function(e) {
+            form.on('submit', function(e) {
                 e.preventDefault();
                 const editId = editRecordIdInput.val();
                 const serviceType = serviceTypeSelect.val();
@@ -536,13 +461,15 @@
                 };
 
                 if (editId) {
-                    await updateRecord(editId, recordData);
+                    recordData.id = editId;
+                    updateRecord(recordData);
                 } else {
-                    recordData.createdAt = new Date();
+                    recordData.createdAt = new Date().toISOString();
                     recordData.isSettled = false;
-                    await addRecord(recordData);
+                    addRecord(recordData);
                 }
                 
+                renderAll();
                 this.reset();
                 editRecordIdInput.val('');
                 form.find('button[type="submit"]').text('ثبت رکورد');
@@ -554,65 +481,55 @@
                 const partnerName = partnerNameInput.val();
                 let reportText = `گزارش حساب های تسویه نشده: ${partnerName}\n\n`;
                 let totalSum = 0;
-                
-                const recordsCollection = collection(db, 'users', userId, currentPartnerKey);
-                const q = query(recordsCollection);
-                const unsubscribeCopy = onSnapshot(q, (querySnapshot) => {
-                    let unsettledText = '';
-                    querySnapshot.forEach((doc) => {
-                        const record = doc.data();
-                        if (!record.isSettled) {
-                            const formattedPrice = Number(record.price).toLocaleString('fa-IR');
-                            totalSum += Number(record.price);
-                            let recordLine = `- کار: ${record.service}, `;
-                            
-                            if (record.service === 'Apple ID') {
-                                recordLine += `مشخصات: ${record.specifications || '-'}, `;
-                            } else {
-                                recordLine += `مدل: ${record.model || '-'}, `;
-                                if (record.dataVolume) {
-                                    recordLine += `(حجم: ${record.dataVolume} GB), `;
-                                }
-                            }
 
-                            recordLine += `تاریخ: ${record.date}, قیمت: ${formattedPrice} تومان\n`;
-                            unsettledText += recordLine;
-                        }
-                    });
-
-                    if (totalSum === 0) {
-                        reportText += "هیچ حساب تسویه نشده ای وجود ندارد.";
+                getRecords().filter(r => !r.isSettled).forEach(record => {
+                    const formattedPrice = Number(record.price).toLocaleString('fa-IR');
+                    totalSum += Number(record.price);
+                    let recordLine = `- کار: ${record.service}, `;
+                    
+                    if (record.service === 'Apple ID') {
+                        recordLine += `مشخصات: ${record.specifications || '-'}, `;
                     } else {
-                        reportText += unsettledText;
+                        recordLine += `مدل: ${record.model || '-'}, `;
+                        if (record.dataVolume) {
+                            recordLine += `(حجم: ${record.dataVolume} GB), `;
+                        }
                     }
 
-                    reportText += `\n--------------------\n`;
-                    reportText += `مجموع کل تسویه نشده: ${totalSum.toLocaleString('fa-IR')} تومان`;
-
-                    const textArea = document.createElement("textarea");
-                    textArea.value = reportText;
-                    textArea.style.position = "fixed";
-                    textArea.style.top = "0";
-                    textArea.style.left = "0";
-                    textArea.style.opacity = "0";
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
-                    try {
-                        document.execCommand('copy');
-                        const originalText = copyButton.text();
-                        copyButton.text('کپی شد!').prop('disabled', true);
-                        setTimeout(() => {
-                            copyButton.text(originalText).prop('disabled', false);
-                        }, 2000);
-                    } catch (err) {
-                        console.error('خطا در کپی کردن متن: ', err);
-                    }
-                    document.body.removeChild(textArea);
-                    unsubscribeCopy(); // Stop listening after copy
+                    recordLine += `تاریخ: ${record.date}, قیمت: ${formattedPrice} تومان\n`;
+                    reportText += recordLine;
                 });
+                
+                if (totalSum === 0) {
+                    reportText += "هیچ حساب تسویه نشده ای وجود ندارد.";
+                }
+
+                reportText += `\n--------------------\n`;
+                reportText += `مجموع کل تسویه نشده: ${totalSum.toLocaleString('fa-IR')} تومان`;
+
+                const textArea = document.createElement("textarea");
+                textArea.value = reportText;
+                textArea.style.position = "fixed";
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    const originalText = copyButton.text();
+                    copyButton.text('کپی شد!').prop('disabled', true);
+                    setTimeout(() => {
+                        copyButton.text(originalText).prop('disabled', false);
+                    }, 2000);
+                } catch (err) {
+                    console.error('خطا در کپی کردن متن: ', err);
+                }
+                document.body.removeChild(textArea);
             });
         }
+    });
     </script>
 </body>
 </html>
